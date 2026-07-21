@@ -5,12 +5,15 @@ import { ArrowLeft, Languages, Loader2, Eye, EyeOff } from "lucide-react";
 import { db } from "../db/database";
 import { useSubtitles } from "../hooks/useSubtitles";
 import { mergeSubtitles } from "../utils/mergeSubtitles";
+import ClickableText from "../components/ClickableText";
+import DictionaryPopup from "../components/DictionaryPopup";
 
 export default function VideoDetailPage() {
   const { videoId } = useParams();
   const [showKorean, setShowKorean] = useState(true);
   const [translating, setTranslating] = useState(false);
   const [translateError, setTranslateError] = useState(null);
+  const [selectedWord, setSelectedWord] = useState(null);
 
   const video = useLiveQuery(() => db.videos.get(videoId), [videoId]);
   const subtitles = useLiveQuery(
@@ -24,23 +27,19 @@ export default function VideoDetailPage() {
 
   const { fetchSubtitles, loading, error } = useSubtitles(videoId);
 
-  // 문장 단위로 병합
   const merged = useMemo(() => mergeSubtitles(subtitles), [subtitles]);
 
-  // 자막 없으면 자동 추출
   useEffect(() => {
     if (subtitles && subtitles.length === 0) {
       fetchSubtitles();
     }
   }, [subtitles, fetchSubtitles]);
 
-  // 번역 맵
   const translationMap = {};
   translations?.forEach((t) => {
     translationMap[t.id] = t.korean;
   });
 
-  // 번역 실행 (병합된 문장 기준)
   const handleTranslate = useCallback(async () => {
     if (!merged?.length) return;
 
@@ -84,7 +83,6 @@ export default function VideoDetailPage() {
     }
   }, [merged, translationMap, videoId]);
 
-  // 자막 추출 완료 후 자동 번역
   useEffect(() => {
     if (merged?.length > 0 && translations?.length === 0 && !translating) {
       handleTranslate();
@@ -125,7 +123,6 @@ export default function VideoDetailPage() {
 
       <h2 className="text-lg font-bold mb-4 line-clamp-2">{video.title}</h2>
 
-      {/* YouTube Player */}
       <div className="relative w-full pb-[56.25%] bg-black rounded-xl overflow-hidden mb-6">
         <iframe
           className="absolute inset-0 w-full h-full"
@@ -135,7 +132,6 @@ export default function VideoDetailPage() {
         />
       </div>
 
-      {/* 자막 영역 */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">
@@ -197,17 +193,24 @@ export default function VideoDetailPage() {
         ) : merged?.length > 0 ? (
           <div className="max-h-[32rem] overflow-y-auto divide-y divide-border">
             {merged.map((sub) => (
-              <button
+              <div
                 key={sub.id}
-                onClick={() => handleSubtitleClick(sub.startTime)}
-                className="w-full text-left px-5 py-4 hover:bg-surface-hover transition-colors"
+                className="px-5 py-4 hover:bg-surface-hover transition-colors"
               >
                 <div className="flex gap-3">
-                  <span className="text-xs text-text-muted font-mono shrink-0 pt-0.5">
+                  <button
+                    onClick={() => handleSubtitleClick(sub.startTime)}
+                    className="text-xs text-text-muted font-mono shrink-0 pt-0.5 hover:text-accent transition-colors"
+                  >
                     {formatTime(sub.startTime)}
-                  </span>
+                  </button>
                   <div className="space-y-1.5">
-                    <p className="text-sm leading-relaxed">{sub.text}</p>
+                    <p className="text-sm leading-relaxed">
+                      <ClickableText
+                        text={sub.text}
+                        onWordClick={setSelectedWord}
+                      />
+                    </p>
                     {showKorean && translationMap[sub.id] && (
                       <p className="text-xs text-text-muted leading-relaxed">
                         {translationMap[sub.id]}
@@ -215,7 +218,7 @@ export default function VideoDetailPage() {
                     )}
                   </div>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         ) : (
@@ -224,6 +227,15 @@ export default function VideoDetailPage() {
           </div>
         )}
       </div>
+
+      {/* 사전 팝업 */}
+      {selectedWord && (
+        <DictionaryPopup
+          word={selectedWord}
+          videoId={videoId}
+          onClose={() => setSelectedWord(null)}
+        />
+      )}
     </div>
   );
 }

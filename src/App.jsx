@@ -4,6 +4,7 @@ import HomePage from "./pages/HomePage";
 import VideosPage from "./pages/VideosPage";
 import VideoDetailPage from "./pages/VideoDetailPage";
 import VocabularyPage from "./pages/VocabularyPage";
+import FlashcardPage from "./pages/FlashcardPage";
 import StudyPage from "./pages/StudyPage";
 import StatsPage from "./pages/StatsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/videos" element={<VideosPage />} />
           <Route path="/videos/:videoId" element={<VideoDetailPage />} />
           <Route path="/vocabulary" element={<VocabularyPage />} />
+          <Route path="/vocabulary/flashcard" element={<FlashcardPage />} />
           <Route path="/study" element={<StudyPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
