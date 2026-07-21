@@ -108,7 +108,10 @@ export default function VocabularyPage() {
                           <span className="text-accent mr-1">
                             {m.partOfSpeech}
                           </span>
-                          {m.definition}
+                          {m.definitions?.[0]?.korean ||
+                            m.definitions?.[0]?.english ||
+                            m.definition ||
+                            ""}
                         </p>
                       ))}
                     </div>

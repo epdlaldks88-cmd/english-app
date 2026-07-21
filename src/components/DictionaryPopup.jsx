@@ -4,6 +4,7 @@ import { db } from "../db/database";
 
 export default function DictionaryPopup({ word, videoId, onClose }) {
   const [data, setData] = useState(null);
+  const [koreanMeanings, setKoreanMeanings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saved, setSaved] = useState(false);
@@ -15,8 +16,8 @@ export default function DictionaryPopup({ word, videoId, onClose }) {
       setLoading(true);
       setError(null);
       setData(null);
+      setKoreanMeanings([]);
 
-      // 이미 저장된 단어인지 확인
       const existing = await db.words
         .where("word")
         .equalsIgnoreCase(word)
@@ -31,6 +32,26 @@ export default function DictionaryPopup({ word, videoId, onClose }) {
         if (!res.ok) throw new Error("단어를 찾을 수 없습니다.");
         const json = await res.json();
         setData(json[0]);
+
+        // 영어 뜻을 모아서 한글 번역 요청
+        const definitions = [];
+        json[0].meanings?.forEach((m) => {
+          m.definitions.slice(0, 3).forEach((d) => {
+            definitions.push(d.definition);
+          });
+        });
+
+        if (definitions.length > 0) {
+          const transRes = await fetch("/api/translate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ texts: definitions }),
+          });
+          if (transRes.ok) {
+            const { translations } = await transRes.json();
+            setKoreanMeanings(translations);
+          }
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -49,11 +70,15 @@ export default function DictionaryPopup({ word, videoId, onClose }) {
   };
 
   const saveWord = async () => {
+    let defIndex = 0;
     const meanings =
       data?.meanings?.map((m) => ({
         partOfSpeech: m.partOfSpeech,
-        definition: m.definitions[0]?.definition || "",
-        example: m.definitions[0]?.example || "",
+        definitions: m.definitions.slice(0, 3).map((d) => ({
+          english: d.definition,
+          korean: koreanMeanings[defIndex++] || "",
+          example: d.example || "",
+        })),
       })) || [];
 
     await db.words.put({
@@ -74,6 +99,9 @@ export default function DictionaryPopup({ word, videoId, onClose }) {
   };
 
   if (!word) return null;
+
+  // 뜻 표시용: 영어 정의 인덱스 추적
+  let defCounter = 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
@@ -113,7 +141,6 @@ export default function DictionaryPopup({ word, videoId, onClose }) {
           ) : error ? (
             <div className="text-center py-8">
               <p className="text-text-muted text-sm mb-3">{error}</p>
-              {/* 사전에 없어도 단어장 저장 가능 */}
               {!saved && (
                 <button
                   onClick={async () => {
@@ -145,23 +172,26 @@ export default function DictionaryPopup({ word, videoId, onClose }) {
                   <span className="inline-block px-2 py-0.5 text-xs font-medium bg-accent/15 text-accent rounded mb-2">
                     {meaning.partOfSpeech}
                   </span>
-                  {meaning.definitions.slice(0, 3).map((def, j) => (
-                    <div key={j} className="mb-2 last:mb-0">
-                      <p className="text-sm leading-relaxed">
-                        {j + 1}. {def.definition}
-                      </p>
-                      {def.example && (
-                        <p className="text-xs text-text-muted mt-0.5 italic">
-                          "{def.example}"
+                  {meaning.definitions.slice(0, 3).map((def, j) => {
+                    const ki = defCounter++;
+                    return (
+                      <div key={j} className="mb-3 last:mb-0">
+                        <p className="text-sm leading-relaxed">
+                          {j + 1}. {def.definition}
                         </p>
-                      )}
-                    </div>
-                  ))}
-                  {meaning.synonyms?.length > 0 && (
-                    <p className="text-xs text-text-muted mt-1">
-                      유의어: {meaning.synonyms.slice(0, 5).join(", ")}
-                    </p>
-                  )}
+                        {koreanMeanings[ki] && (
+                          <p className="text-sm text-accent mt-0.5">
+                            → {koreanMeanings[ki]}
+                          </p>
+                        )}
+                        {def.example && (
+                          <p className="text-xs text-text-muted mt-0.5 italic">
+                            "{def.example}"
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </>

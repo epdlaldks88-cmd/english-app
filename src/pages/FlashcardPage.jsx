@@ -165,12 +165,23 @@ export default function FlashcardPage() {
                       <span className="inline-block px-2 py-0.5 text-xs font-medium bg-accent/15 text-accent rounded mb-1">
                         {m.partOfSpeech}
                       </span>
-                      <p className="text-sm">{m.definition}</p>
-                      {m.example && (
-                        <p className="text-xs text-text-muted mt-0.5 italic">
-                          "{m.example}"
-                        </p>
-                      )}
+                      {m.definitions?.map((d, j) => (
+                        <div key={j} className="mb-2">
+                          <p className="text-sm font-medium">
+                            {d.korean || d.english}
+                          </p>
+                          {d.korean && (
+                            <p className="text-xs text-text-muted">
+                              {d.english}
+                            </p>
+                          )}
+                          {d.example && (
+                            <p className="text-xs text-text-muted mt-0.5 italic">
+                              "{d.example}"
+                            </p>
+                          )}
+                        </div>
+                      )) || <p className="text-sm">{m.definition || ""}</p>}
                     </div>
                   ))
                 ) : (
