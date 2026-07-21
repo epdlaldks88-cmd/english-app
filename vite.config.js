@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -9,6 +10,37 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      VitePWA({
+        registerType: "autoUpdate",
+        manifest: false, // public/manifest.json 사용
+        workbox: {
+          globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/api\.dictionaryapi\.dev\/.*/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "dictionary-cache",
+                expiration: {
+                  maxEntries: 500,
+                  maxAgeSeconds: 60 * 60 * 24 * 30,
+                },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/img\.youtube\.com\/.*/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "youtube-thumbnails",
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 60 * 60 * 24 * 7,
+                },
+              },
+            },
+          ],
+        },
+      }),
       {
         name: "api-subtitles",
         configureServer(server) {
