@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowLeft, Languages, Loader2, Eye, EyeOff } from "lucide-react";
 import { db } from "../db/database";
 import { useSubtitles } from "../hooks/useSubtitles";
+import { mergeSubtitles } from "../utils/mergeSubtitles";
 
 export default function VideoDetailPage() {
   const { videoId } = useParams();
@@ -23,6 +24,9 @@ export default function VideoDetailPage() {
 
   const { fetchSubtitles, loading, error } = useSubtitles(videoId);
 
+  // 문장 단위로 병합
+  const merged = useMemo(() => mergeSubtitles(subtitles), [subtitles]);
+
   // 자막 없으면 자동 추출
   useEffect(() => {
     if (subtitles && subtitles.length === 0) {
@@ -30,25 +34,23 @@ export default function VideoDetailPage() {
     }
   }, [subtitles, fetchSubtitles]);
 
-  // 번역 맵 생성
+  // 번역 맵
   const translationMap = {};
   translations?.forEach((t) => {
     translationMap[t.id] = t.korean;
   });
 
-  // 번역 실행
+  // 번역 실행 (병합된 문장 기준)
   const handleTranslate = useCallback(async () => {
-    if (!subtitles?.length) return;
+    if (!merged?.length) return;
 
-    // 아직 번역 안 된 자막만 필터
-    const untranslated = subtitles.filter((s) => !translationMap[s.id]);
+    const untranslated = merged.filter((s) => !translationMap[s.id]);
     if (untranslated.length === 0) return;
 
     setTranslating(true);
     setTranslateError(null);
 
     try {
-      // 50개씩 배치 번역 (DeepL 제한 대응)
       const batchSize = 50;
       for (let i = 0; i < untranslated.length; i += batchSize) {
         const batch = untranslated.slice(i, i + batchSize);
@@ -80,14 +82,14 @@ export default function VideoDetailPage() {
     } finally {
       setTranslating(false);
     }
-  }, [subtitles, translationMap, videoId]);
+  }, [merged, translationMap, videoId]);
 
   // 자막 추출 완료 후 자동 번역
   useEffect(() => {
-    if (subtitles?.length > 0 && translations?.length === 0 && !translating) {
+    if (merged?.length > 0 && translations?.length === 0 && !translating) {
       handleTranslate();
     }
-  }, [subtitles, translations, translating, handleTranslate]);
+  }, [merged, translations, translating, handleTranslate]);
 
   const handleSubtitleClick = (startTime) => {
     const iframe = document.querySelector("iframe");
@@ -136,7 +138,14 @@ export default function VideoDetailPage() {
       {/* 자막 영역 */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold">자막</h3>
+          <h3 className="text-sm font-semibold">
+            자막
+            {merged?.length > 0 && (
+              <span className="text-text-muted font-normal ml-2">
+                {merged.length}문장
+              </span>
+            )}
+          </h3>
           <div className="flex items-center gap-2">
             {translating && (
               <span className="flex items-center gap-1.5 text-xs text-text-muted">
@@ -153,7 +162,7 @@ export default function VideoDetailPage() {
                 {showKorean ? "한글 숨기기" : "한글 보기"}
               </button>
             )}
-            {!hasTranslations && !translating && subtitles?.length > 0 && (
+            {!hasTranslations && !translating && merged?.length > 0 && (
               <button
                 onClick={handleTranslate}
                 className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-accent/15 text-accent hover:bg-accent/25 transition-colors"
@@ -185,19 +194,19 @@ export default function VideoDetailPage() {
               다시 시도
             </button>
           </div>
-        ) : subtitles?.length > 0 ? (
-          <div className="max-h-96 overflow-y-auto divide-y divide-border">
-            {subtitles.map((sub) => (
+        ) : merged?.length > 0 ? (
+          <div className="max-h-[32rem] overflow-y-auto divide-y divide-border">
+            {merged.map((sub) => (
               <button
                 key={sub.id}
                 onClick={() => handleSubtitleClick(sub.startTime)}
-                className="w-full text-left px-5 py-3 hover:bg-surface-hover transition-colors"
+                className="w-full text-left px-5 py-4 hover:bg-surface-hover transition-colors"
               >
                 <div className="flex gap-3">
                   <span className="text-xs text-text-muted font-mono shrink-0 pt-0.5">
                     {formatTime(sub.startTime)}
                   </span>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <p className="text-sm leading-relaxed">{sub.text}</p>
                     {showKorean && translationMap[sub.id] && (
                       <p className="text-xs text-text-muted leading-relaxed">
