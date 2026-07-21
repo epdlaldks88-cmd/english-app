@@ -14,8 +14,10 @@ export default function VocabularyPage() {
   const reviewWords = words?.filter(
     (w) => new Date(w.nextReview) <= new Date(),
   );
+  const idioms = words?.filter((w) => w.isIdiom);
 
-  const displayed = filter === "review" ? reviewWords : words;
+  const displayed =
+    filter === "review" ? reviewWords : filter === "idiom" ? idioms : words;
 
   const handleDelete = async (id) => {
     if (!confirm("이 단어를 삭제할까요?")) return;
@@ -59,6 +61,16 @@ export default function VocabularyPage() {
           }`}
         >
           전체 {words?.length || 0}
+        </button>
+        <button
+          onClick={() => setFilter("idiom")}
+          className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+            filter === "idiom"
+              ? "bg-accent text-white"
+              : "text-text-muted hover:text-text"
+          }`}
+        >
+          숙어 {idioms?.length || 0}
         </button>
         <button
           onClick={() => setFilter("review")}

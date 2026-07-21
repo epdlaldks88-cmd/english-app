@@ -1,10 +1,18 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowLeft, Languages, Loader2, Eye, EyeOff } from "lucide-react";
+import {
+  ArrowLeft,
+  Languages,
+  Loader2,
+  Eye,
+  EyeOff,
+  BookOpen,
+} from "lucide-react";
 import { db } from "../db/database";
 import { useSubtitles } from "../hooks/useSubtitles";
 import { mergeSubtitles } from "../utils/mergeSubtitles";
+import { autoExtractAndSave } from "../utils/extractWords";
 import ClickableText from "../components/ClickableText";
 import DictionaryPopup from "../components/DictionaryPopup";
 
@@ -14,6 +22,8 @@ export default function VideoDetailPage() {
   const [translating, setTranslating] = useState(false);
   const [translateError, setTranslateError] = useState(null);
   const [selectedWord, setSelectedWord] = useState(null);
+  const [extracting, setExtracting] = useState(false);
+  const [extractProgress, setExtractProgress] = useState(0);
 
   const video = useLiveQuery(() => db.videos.get(videoId), [videoId]);
   const subtitles = useLiveQuery(
@@ -89,6 +99,42 @@ export default function VideoDetailPage() {
     }
   }, [merged, translations, translating, handleTranslate]);
 
+  // 단어 자동 추출: 번역 완료 후 + 아직 추출 안 한 영상
+  useEffect(() => {
+    if (
+      merged?.length > 0 &&
+      translations?.length > 0 &&
+      video &&
+      !video.wordsExtracted &&
+      !extracting &&
+      !translating
+    ) {
+      handleAutoExtract();
+    }
+  }, [merged, translations, video, extracting, translating]);
+
+  const handleAutoExtract = async () => {
+    if (!merged?.length) return;
+
+    setExtracting(true);
+    setExtractProgress(0);
+
+    try {
+      const result = await autoExtractAndSave(merged, videoId, (progress) => {
+        setExtractProgress(progress);
+      });
+
+      // 추출 완료 표시
+      await db.videos.update(videoId, { wordsExtracted: true });
+
+      console.log(`단어 ${result.added}개 자동 추출 완료`);
+    } catch (err) {
+      console.error("단어 추출 실패:", err);
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const handleSubtitleClick = (startTime) => {
     const iframe = document.querySelector("iframe");
     if (iframe) {
@@ -132,6 +178,40 @@ export default function VideoDetailPage() {
         />
       </div>
 
+      {/* 단어 추출 진행 표시 */}
+      {extracting && (
+        <div className="bg-surface border border-border rounded-xl px-5 py-3 mb-4 flex items-center gap-3">
+          <Loader2 size={16} className="animate-spin text-accent shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm">
+              단어·숙어 자동 추출 중... {extractProgress}%
+            </p>
+            <div className="h-1 bg-border rounded-full mt-1.5 overflow-hidden">
+              <div
+                className="h-full bg-accent rounded-full transition-all"
+                style={{ width: `${extractProgress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 추출 완료 표시 */}
+      {video.wordsExtracted && !extracting && (
+        <div className="flex items-center justify-between bg-surface border border-border rounded-xl px-5 py-3 mb-4">
+          <span className="text-sm text-text-muted">
+            단어·숙어 자동 추출 완료
+          </span>
+          <Link
+            to="/vocabulary"
+            className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
+          >
+            <BookOpen size={14} /> 단어장 보기
+          </Link>
+        </div>
+      )}
+
+      {/* 자막 영역 */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
           <h3 className="text-sm font-semibold">
@@ -228,7 +308,6 @@ export default function VideoDetailPage() {
         )}
       </div>
 
-      {/* 사전 팝업 */}
       {selectedWord && (
         <DictionaryPopup
           word={selectedWord}
