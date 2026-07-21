@@ -8,6 +8,7 @@ import FlashcardPage from "./pages/FlashcardPage";
 import StudyPage from "./pages/StudyPage";
 import ClozePage from "./pages/ClozePage";
 import DictationPage from "./pages/DictationPage";
+import ShadowingPage from "./pages/ShadowingPage";
 import StatsPage from "./pages/StatsPage";
 import SettingsPage from "./pages/SettingsPage";
 
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/study" element={<StudyPage />} />
           <Route path="/study/cloze/:videoId" element={<ClozePage />} />
           <Route path="/study/dictation/:videoId" element={<DictationPage />} />
+          <Route path="/study/shadowing/:videoId" element={<ShadowingPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>

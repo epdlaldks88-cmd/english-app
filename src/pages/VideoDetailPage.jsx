@@ -10,6 +10,7 @@ import {
   BookOpen,
   PenTool,
   Headphones,
+  Mic,
 } from "lucide-react";
 import { db } from "../db/database";
 import { useSubtitles } from "../hooks/useSubtitles";
@@ -226,6 +227,12 @@ export default function VideoDetailPage() {
           className="flex items-center gap-1.5 px-4 py-2 text-sm bg-success/15 text-success rounded-lg hover:bg-success/25 transition-colors"
         >
           <Headphones size={14} /> 받아쓰기
+        </Link>
+        <Link
+          to={`/study/shadowing/${videoId}`}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm bg-warning/15 text-warning rounded-lg hover:bg-warning/25 transition-colors"
+        >
+          <Mic size={14} /> 쉐도잉
         </Link>
       </div>
 

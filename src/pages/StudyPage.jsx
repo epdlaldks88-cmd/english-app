@@ -1,6 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { Link } from "react-router-dom";
-import { PenTool, Headphones } from "lucide-react";
+import { PenTool, Headphones, Mic } from "lucide-react";
 import { db } from "../db/database";
 import { getThumbnail } from "../utils/youtube";
 
@@ -53,6 +53,12 @@ export default function StudyPage() {
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-success/15 text-success rounded-md hover:bg-success/25 transition-colors"
                     >
                       <Headphones size={12} /> 받아쓰기
+                    </Link>
+                    <Link
+                      to={`/study/shadowing/${v.id}`}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-warning/15 text-warning rounded-md hover:bg-warning/25 transition-colors"
+                    >
+                      <Mic size={12} /> 쉐도잉
                     </Link>
                   </div>
                 </div>
