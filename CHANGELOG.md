@@ -2,9 +2,22 @@
 
 이 프로젝트의 모든 주요 변경 사항을 기록합니다.
 
+## [0.2.0] - 2026-07-21
+
+### Phase 1: 영상 + 자막
+
+- YouTube URL 등록/삭제/리스트 UI
+- 영상 썸네일 표시
+- YouTube IFrame Player 임베드
+- youtube-transcript 패키지로 영어 자막 자동 추출
+- Vercel Serverless Function (api/subtitles.js) + Vite 로컬 미들웨어
+- 자막 Dexie 캐싱 (한 번 추출 후 재사용)
+- 자막 클릭 → 해당 시간으로 영상 점프
+
 ## [0.1.0] - 2026-07-21
 
 ### 프로젝트 초기화
+
 - Vite + React 프로젝트 생성
 - Tailwind CSS v4 설정 (다크 테마 기본)
 - React Router v7 라우팅 설정 (홈/영상/단어장/학습/통계/설정)
