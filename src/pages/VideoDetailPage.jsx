@@ -8,6 +8,8 @@ import {
   Eye,
   EyeOff,
   BookOpen,
+  PenTool,
+  Headphones,
 } from "lucide-react";
 import { db } from "../db/database";
 import { useSubtitles } from "../hooks/useSubtitles";
@@ -210,6 +212,22 @@ export default function VideoDetailPage() {
           </Link>
         </div>
       )}
+
+      {/* 학습 모드 바로가기 */}
+      <div className="flex gap-2 mb-4">
+        <Link
+          to={`/study/cloze/${videoId}`}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm bg-accent/15 text-accent rounded-lg hover:bg-accent/25 transition-colors"
+        >
+          <PenTool size={14} /> 빈칸 채우기
+        </Link>
+        <Link
+          to={`/study/dictation/${videoId}`}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm bg-success/15 text-success rounded-lg hover:bg-success/25 transition-colors"
+        >
+          <Headphones size={14} /> 받아쓰기
+        </Link>
+      </div>
 
       {/* 자막 영역 */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
