@@ -18,6 +18,7 @@ import { mergeSubtitles } from "../utils/mergeSubtitles";
 import { autoExtractAndSave } from "../utils/extractWords";
 import ClickableText from "../components/ClickableText";
 import DictionaryPopup from "../components/DictionaryPopup";
+import ManualSubtitleInput from "../components/ManualSubtitleInput";
 
 export default function VideoDetailPage() {
   const { videoId } = useParams();
@@ -38,7 +39,8 @@ export default function VideoDetailPage() {
     [videoId],
   );
 
-  const { fetchSubtitles, loading, error } = useSubtitles(videoId);
+  const { fetchSubtitles, loading, error, needsManual, setNeedsManual } =
+    useSubtitles(videoId);
 
   const merged = useMemo(() => mergeSubtitles(subtitles), [subtitles]);
 
@@ -294,6 +296,20 @@ export default function VideoDetailPage() {
             >
               다시 시도
             </button>
+          </div>
+        ) : needsManual ? (
+          <div className="p-5">
+            <p className="text-sm text-text-muted mb-4">
+              서버에서 자막을 자동으로 가져올 수 없습니다. YouTube에서
+              스크립트를 복사하여 직접 입력해주세요.
+            </p>
+            <ManualSubtitleInput
+              videoId={videoId}
+              onComplete={(count) => {
+                setNeedsManual(false);
+                window.location.reload();
+              }}
+            />
           </div>
         ) : merged?.length > 0 ? (
           <div className="max-h-[32rem] overflow-y-auto divide-y divide-border">
