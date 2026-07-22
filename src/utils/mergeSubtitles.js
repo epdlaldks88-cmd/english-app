@@ -14,13 +14,13 @@ export function mergeSubtitles(subtitles) {
 
     const combined = current.texts.join(" ").trim();
 
-    // 문장 끝 감지: .?! 로 끝나거나, 시간이 충분히 쌓였거나, 길이가 길면 분리
+    // 1순위: 문장 끝(.?!) 감지
     const endsWithPunctuation = /[.?!]$/.test(combined);
-    const duration = current.endTime - current.startTime;
-    const isTooLong = combined.length > 150;
-    const isReasonableChunk = combined.length > 60 && duration > 3;
 
-    if (endsWithPunctuation || isTooLong || isReasonableChunk) {
+    // 2순위: 너무 길면 강제 분리 (마침표 없는 구어체 대응)
+    const isTooLong = combined.length > 300;
+
+    if (endsWithPunctuation || isTooLong) {
       merged.push({
         id: `merged_${merged.length}`,
         videoId: sub.videoId,
