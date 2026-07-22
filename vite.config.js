@@ -320,75 +320,76 @@ export default defineConfig(({ mode }) => {
             const url = new URL(req.url, "http://localhost");
             const topic = url.searchParams.get("topic") || "world";
 
-            const topics = {
-              world: "WORLD",
-              business: "BUSINESS",
-              technology: "TECHNOLOGY",
-              science: "SCIENCE",
-              health: "HEALTH",
-              sports: "SPORTS",
-              entertainment: "ENTERTAINMENT",
+            const sections = {
+              world: "https://edition.cnn.com/world",
+              business: "https://edition.cnn.com/business",
+              technology: "https://edition.cnn.com/tech",
+              science: "https://edition.cnn.com/science",
+              health: "https://edition.cnn.com/health",
+              sports: "https://edition.cnn.com/sport",
+              entertainment: "https://edition.cnn.com/entertainment",
             };
 
             try {
-              const googleTopic = topics[topic] || "WORLD";
-              const rssUrl = `https://news.google.com/rss/headlines/section/topic/${googleTopic}?hl=en-US&gl=US&ceid=US:en`;
+              const sectionUrl = sections[topic] || sections.world;
 
-              const fetchRes = await fetch(rssUrl, {
+              const fetchRes = await fetch(sectionUrl, {
                 headers: {
                   "User-Agent":
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+                  "Accept-Language": "en-US,en;q=0.9",
                 },
               });
 
-              const xml = await fetchRes.text();
+              if (!fetchRes.ok)
+                throw new Error(`CNN 로드 실패: ${fetchRes.status}`);
 
-              const items = [];
-              const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
-              let match;
+              const html = await fetchRes.text();
+              const articles = [];
+              const seen = new Set();
 
-              while (
-                (match = itemRegex.exec(xml)) !== null &&
-                items.length < 15
-              ) {
-                const itemXml = match[1];
+              // 기사 링크 + 제목 추출
+              const patterns = [
+                /data-link="(\/\d{4}\/\d{2}\/\d{2}\/[^"]+)"[^>]*>[\s\S]*?<span[^>]*class="[^"]*container__headline-text[^"]*"[^>]*>([\s\S]*?)<\/span>/gi,
+                /<a[^>]+href="(\/\d{4}\/\d{2}\/\d{2}\/[^"]+)"[^>]*>[\s\S]*?<span[^>]*class="[^"]*headline[^"]*"[^>]*>([\s\S]*?)<\/span>/gi,
+              ];
 
-                const titleMatch =
-                  itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) ||
-                  itemXml.match(/<title>(.*?)<\/title>/);
-                const linkMatch = itemXml.match(/<link>(.*?)<\/link>/);
-                const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/);
-                const sourceMatch = itemXml.match(
-                  /<source[^>]*>(.*?)<\/source>/,
-                );
-                const descMatch =
-                  itemXml.match(
-                    /<description><!\[CDATA\[(.*?)\]\]><\/description>/,
-                  ) || itemXml.match(/<description>(.*?)<\/description>/);
-
-                if (!titleMatch || !linkMatch) continue;
-
-                let title = titleMatch[1].trim();
-                const link = linkMatch[1].trim();
-                const pubDate = pubDateMatch?.[1] || "";
-                const source = sourceMatch?.[1]?.trim() || "";
-
-                if (source && title.endsWith(` - ${source}`)) {
-                  title = title.slice(0, -source.length - 3).trim();
+              for (const regex of patterns) {
+                let match;
+                while (
+                  (match = regex.exec(html)) !== null &&
+                  articles.length < 20
+                ) {
+                  const path = match[1];
+                  const title = match[2]
+                    .replace(/<[^>]+>/g, "")
+                    .replace(/\s+/g, " ")
+                    .trim();
+                  if (title && !seen.has(path)) {
+                    seen.add(path);
+                    const dateMatch = path.match(
+                      /\/(\d{4})\/(\d{2})\/(\d{2})\//,
+                    );
+                    articles.push({
+                      title,
+                      url: `https://edition.cnn.com${path}`,
+                      thumbnail: "",
+                      pubDate: dateMatch
+                        ? `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`
+                        : "",
+                      source: "CNN",
+                      description: "",
+                    });
+                  }
                 }
-
-                let thumbnail = "";
-                if (descMatch) {
-                  const imgMatch = descMatch[1].match(/src="([^"]+)"/);
-                  if (imgMatch) thumbnail = imgMatch[1];
-                }
-
-                items.push({ title, url: link, thumbnail, pubDate, source });
               }
 
+              console.log("CNN articles found:", articles.length);
+
               res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({ articles: items }));
+              res.end(JSON.stringify({ articles: articles.slice(0, 15) }));
             } catch (err) {
+              console.log("news error:", err.message);
               res.statusCode = 500;
               res.end(JSON.stringify({ error: err.message }));
             }
@@ -409,16 +410,73 @@ export default defineConfig(({ mode }) => {
             }
 
             try {
+              // Google News URL: 브라우저처럼 페이지 로드
               const fetchRes = await fetch(targetUrl, {
                 redirect: "follow",
                 headers: {
                   "User-Agent":
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+                  Accept: "text/html",
+                  "Accept-Language": "en-US,en;q=0.9",
                 },
               });
+
+              // 최종 URL이 Google News가 아니면 성공
+              if (!fetchRes.url.includes("news.google.com")) {
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ resolvedUrl: fetchRes.url }));
+                return;
+              }
+
+              // HTML에서 실제 URL 추출
+              const html = await fetchRes.text();
+
+              // 방법들 순차 시도
+              const patterns = [
+                /data-n-au="([^"]+)"/,
+                /<a[^>]+href="(https?:\/\/(?!news\.google|accounts\.google|support\.google)[^"]+)"[^>]*data-n-au/,
+                /window\.location\.replace\(['"]([^'"]+)['"]\)/,
+                /<meta[^>]+http-equiv="refresh"[^>]+url=([^"'\s>]+)/i,
+                /<link[^>]+rel="canonical"[^>]+href="(https?:\/\/(?!news\.google)[^"]+)"/,
+                /property="og:url"[^>]+content="([^"]+)"/,
+                /content="([^"]+)"[^>]+property="og:url"/,
+              ];
+
+              for (const pattern of patterns) {
+                const match = html.match(pattern);
+                if (match?.[1] && !match[1].includes("news.google.com")) {
+                  const resolved = match[1].replace(/&amp;/g, "&");
+                  res.setHeader("Content-Type", "application/json");
+                  res.end(JSON.stringify({ resolvedUrl: resolved }));
+                  return;
+                }
+              }
+
+              // 모든 href에서 외부 URL 찾기
+              const allUrls = html.match(
+                /href="(https?:\/\/(?!news\.google|accounts\.google|support\.google|play\.google|consent\.google)[^"]+)"/g,
+              );
+              if (allUrls) {
+                for (const u of allUrls) {
+                  const urlMatch = u.match(/href="([^"]+)"/);
+                  if (urlMatch) {
+                    res.setHeader("Content-Type", "application/json");
+                    res.end(
+                      JSON.stringify({
+                        resolvedUrl: urlMatch[1].replace(/&amp;/g, "&"),
+                      }),
+                    );
+                    return;
+                  }
+                }
+              }
+
+              // 실패
+              console.log("Google News URL 해결 실패, HTML 길이:", html.length);
               res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({ resolvedUrl: fetchRes.url }));
-            } catch {
+              res.end(JSON.stringify({ resolvedUrl: targetUrl, failed: true }));
+            } catch (err) {
+              console.log("resolve-url 에러:", err.message);
               res.setHeader("Content-Type", "application/json");
               res.end(JSON.stringify({ resolvedUrl: targetUrl }));
             }

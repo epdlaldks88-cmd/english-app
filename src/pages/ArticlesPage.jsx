@@ -3,12 +3,10 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Plus,
-  X,
   Trash2,
   BookOpen,
   Loader2,
   Link as LinkIcon,
-  Search,
   Globe,
 } from "lucide-react";
 import { db } from "../db/database";
@@ -71,23 +69,8 @@ export default function ArticlesPage() {
     setImporting(index);
 
     try {
-      // Google News 리다이렉트 URL 해결
-      let articleUrl = news.url;
-      if (articleUrl.includes("news.google.com")) {
-        try {
-          const resolveRes = await fetch(
-            `/api/resolve-url?url=${encodeURIComponent(articleUrl)}`,
-          );
-          const resolveData = await resolveRes.json();
-          if (resolveData.resolvedUrl) {
-            articleUrl = resolveData.resolvedUrl;
-          }
-        } catch {}
-      }
-
-      // 본문 추출
       const res = await fetch(
-        `/api/fetch-article?url=${encodeURIComponent(articleUrl)}`,
+        `/api/fetch-article?url=${encodeURIComponent(news.url)}`,
       );
       const data = await res.json();
 
@@ -98,7 +81,7 @@ export default function ArticlesPage() {
       await db.articles.put({
         id,
         title: data.title || news.title,
-        sourceUrl: articleUrl,
+        sourceUrl: news.url,
         content: data.content,
         addedAt: new Date().toISOString(),
         wordsExtracted: false,
@@ -106,7 +89,9 @@ export default function ArticlesPage() {
 
       navigate(`/articles/${id}`);
     } catch (err) {
-      alert(`가져오기 실패: ${err.message}\n직접 입력으로 추가해주세요.`);
+      alert(
+        `가져오기 실패: ${err.message}\n직접 추가 탭에서 URL을 입력해주세요.`,
+      );
     } finally {
       setImporting(null);
     }
