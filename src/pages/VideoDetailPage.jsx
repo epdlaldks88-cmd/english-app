@@ -11,6 +11,7 @@ import {
   PenTool,
   Headphones,
   Mic,
+  RefreshCw,
 } from "lucide-react";
 import { db } from "../db/database";
 import { useSubtitles } from "../hooks/useSubtitles";
@@ -19,6 +20,7 @@ import { autoExtractAndSave } from "../utils/extractWords";
 import ClickableText from "../components/ClickableText";
 import DictionaryPopup from "../components/DictionaryPopup";
 import ManualSubtitleInput from "../components/ManualSubtitleInput";
+import { supabase } from "../db/supabase";
 
 export default function VideoDetailPage() {
   const { videoId } = useParams();
@@ -140,6 +142,35 @@ export default function VideoDetailPage() {
     }
   };
 
+  const handleReprocess = async () => {
+    if (!confirm("자막 번역과 단어를 다시 추출합니다. 진행할까요?")) return;
+
+    // 번역 + 단어 삭제
+    await db.translations.where("videoId").equals(videoId).delete();
+    await db.words.where("videoId").equals(videoId).delete();
+    await db.videos.update(videoId, { wordsExtracted: false });
+
+    window.location.reload();
+  };
+
+  const handleResetAll = async () => {
+    if (!confirm("자막을 포함한 모든 데이터를 초기화합니다. 진행할까요?"))
+      return;
+
+    // 전부 삭제
+    await db.subtitles.where("videoId").equals(videoId).delete();
+    await db.translations.where("videoId").equals(videoId).delete();
+    await db.words.where("videoId").equals(videoId).delete();
+    await db.videos.update(videoId, { wordsExtracted: false });
+
+    // Supabase도 삭제
+    if (supabase) {
+      await supabase.from("subtitles").delete().eq("video_id", videoId);
+    }
+
+    window.location.reload();
+  };
+
   const handleSubtitleClick = (startTime) => {
     const iframe = document.querySelector("iframe");
     if (iframe) {
@@ -215,6 +246,22 @@ export default function VideoDetailPage() {
           </Link>
         </div>
       )}
+
+      {/* 자막 관리 */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={handleReprocess}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded-lg text-text-muted hover:bg-surface-hover transition-colors"
+        >
+          <RefreshCw size={12} /> 번역·단어 재처리
+        </button>
+        <button
+          onClick={handleResetAll}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded-lg text-text-muted hover:text-danger hover:border-danger/30 transition-colors"
+        >
+          <RefreshCw size={12} /> 자막 전체 초기화
+        </button>
+      </div>
 
       {/* 학습 모드 바로가기 */}
       <div className="flex gap-2 mb-4">

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Plus, X, Trash2, Play } from "lucide-react";
 import { db } from "../db/database";
 import { extractVideoId, getThumbnail } from "../utils/youtube";
+import { supabase } from "../db/supabase";
 
 export default function VideosPage() {
   const [showForm, setShowForm] = useState(false);
@@ -45,8 +46,17 @@ export default function VideosPage() {
 
   const handleDelete = async (id) => {
     if (!confirm("이 영상을 삭제할까요?")) return;
+
+    // 로컬 삭제
     await db.videos.delete(id);
     await db.subtitles.where("videoId").equals(id).delete();
+    await db.translations.where("videoId").equals(id).delete();
+    await db.words.where("videoId").equals(id).delete();
+
+    // Supabase 삭제
+    if (supabase) {
+      await supabase.from("subtitles").delete().eq("video_id", id);
+    }
   };
 
   return (
