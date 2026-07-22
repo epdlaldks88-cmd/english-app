@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowLeft, RotateCcw, Volume2 } from "lucide-react";
 import { db } from "../db/database";
+import { syncToCloud } from "../db/sync";
 
 // SM-2 알고리즘
 function calcSRS(word, quality) {
@@ -56,6 +57,8 @@ export default function FlashcardPage() {
 
     const updates = calcSRS(current, quality);
     await db.words.update(current.id, updates);
+
+    syncToCloud();
 
     if (index + 1 >= reviewWords.length) {
       setFinished(true);

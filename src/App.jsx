@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
@@ -11,8 +12,35 @@ import DictationPage from "./pages/DictationPage";
 import ShadowingPage from "./pages/ShadowingPage";
 import StatsPage from "./pages/StatsPage";
 import SettingsPage from "./pages/SettingsPage";
+import { syncFromCloud, syncToCloud } from "./db/sync";
 
 export default function App() {
+  // 앱 시작 시 클라우드에서 동기화
+  useEffect(() => {
+    syncFromCloud();
+  }, []);
+
+  // 페이지 떠날 때 클라우드로 업로드
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      syncToCloud();
+    };
+
+    // 주기적 싱크 (5분마다)
+    const interval = setInterval(
+      () => {
+        syncToCloud();
+      },
+      5 * 60 * 1000,
+    );
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>

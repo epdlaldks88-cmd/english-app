@@ -5,6 +5,7 @@ import { Plus, X, Trash2, Play } from "lucide-react";
 import { db } from "../db/database";
 import { extractVideoId, getThumbnail } from "../utils/youtube";
 import { supabase } from "../db/supabase";
+import { syncToCloud } from "../db/sync";
 
 export default function VideosPage() {
   const [showForm, setShowForm] = useState(false);
@@ -42,6 +43,7 @@ export default function VideosPage() {
     setTitle("");
     setError("");
     setShowForm(false);
+    syncToCloud();
   };
 
   const handleDelete = async (id) => {
@@ -56,6 +58,9 @@ export default function VideosPage() {
     // Supabase 삭제
     if (supabase) {
       await supabase.from("subtitles").delete().eq("video_id", id);
+      await supabase.from("videos").delete().eq("id", id);
+      await supabase.from("translations").delete().eq("video_id", id);
+      await supabase.from("words").delete().eq("video_id", id);
     }
   };
 
