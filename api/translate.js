@@ -1,17 +1,30 @@
-export default async function handler(req, res) {
+export const config = {
+  runtime: "edge",
+};
+
+export default async function handler(req) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "POST만 허용" });
+    return new Response(JSON.stringify({ error: "POST만 허용" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
-  const { texts } = req.body;
+  const { texts } = await req.json();
 
   if (!texts?.length) {
-    return res.status(400).json({ error: "texts 배열 필요" });
+    return new Response(JSON.stringify({ error: "texts 배열 필요" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const apiKey = process.env.DEEPL_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: "DEEPL_API_KEY 미설정" });
+    return new Response(JSON.stringify({ error: "DEEPL_API_KEY 미설정" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -32,16 +45,20 @@ export default async function handler(req, res) {
       }),
     });
 
-    if (!response.ok) {
-      throw new Error(`DeepL ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`DeepL ${response.status}`);
 
     const data = await response.json();
     const translations = data.translations.map((t) => t.text);
 
-    res.status(200).json({ translations });
+    return new Response(JSON.stringify({ translations }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (err) {
     console.error("번역 실패:", err);
-    res.status(500).json({ error: "번역 실패" });
+    return new Response(JSON.stringify({ error: "번역 실패" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
