@@ -56,10 +56,21 @@ export default defineConfig(({ mode }) => {
 
             try {
               const { YoutubeTranscript } = await import("youtube-transcript");
-              const transcript = await YoutubeTranscript.fetchTranscript(
-                videoId,
-                { lang: "en" },
-              );
+              let transcript;
+              try {
+                transcript = await YoutubeTranscript.fetchTranscript(videoId, {
+                  lang: "en",
+                });
+              } catch {
+                try {
+                  transcript = await YoutubeTranscript.fetchTranscript(videoId);
+                } catch {
+                  transcript = await YoutubeTranscript.fetchTranscript(
+                    videoId,
+                    { lang: "en-US" },
+                  );
+                }
+              }
 
               const subtitles = transcript.map((item, i) => ({
                 id: `${videoId}_${i}`,

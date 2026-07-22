@@ -8,9 +8,23 @@ export default async function handler(req, res) {
   }
 
   try {
-    const transcript = await YoutubeTranscript.fetchTranscript(videoId, {
-      lang: "en",
-    });
+    // 1차: 영어 자막 시도
+    let transcript;
+    try {
+      transcript = await YoutubeTranscript.fetchTranscript(videoId, {
+        lang: "en",
+      });
+    } catch {
+      // 2차: 언어 지정 없이 시도
+      try {
+        transcript = await YoutubeTranscript.fetchTranscript(videoId);
+      } catch {
+        // 3차: 영어 변형 시도
+        transcript = await YoutubeTranscript.fetchTranscript(videoId, {
+          lang: "en-US",
+        });
+      }
+    }
 
     const subtitles = transcript.map((item, i) => ({
       id: `${videoId}_${i}`,
@@ -24,11 +38,9 @@ export default async function handler(req, res) {
     res.status(200).json({ subtitles });
   } catch (err) {
     console.error("자막 추출 실패:", err);
-    res
-      .status(500)
-      .json({
-        error:
-          "자막을 가져올 수 없습니다. 영어 자막이 없는 영상일 수 있습니다.",
-      });
+    res.status(500).json({
+      error:
+        "자막을 가져올 수 없습니다. 자막이 활성화된 영상인지 확인해주세요.",
+    });
   }
 }
