@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet } from "react-router-dom";
 import {
   Home,
   Video,
@@ -6,14 +6,14 @@ import {
   PenTool,
   BarChart3,
   Settings,
-} from 'lucide-react';
+} from "lucide-react";
 
 const navItems = [
-  { to: '/', icon: Home, label: '홈' },
-  { to: '/videos', icon: Video, label: '영상' },
-  { to: '/vocabulary', icon: BookOpen, label: '단어장' },
-  { to: '/study', icon: PenTool, label: '학습' },
-  { to: '/stats', icon: BarChart3, label: '통계' },
+  { to: "/", icon: Home, label: "홈" },
+  { to: "/videos", icon: Video, label: "영상" },
+  { to: "/vocabulary", icon: BookOpen, label: "단어장" },
+  { to: "/study", icon: PenTool, label: "학습" },
+  { to: "/stats", icon: BarChart3, label: "통계" },
 ];
 
 export default function Layout() {
@@ -32,12 +32,12 @@ export default function Layout() {
             <NavLink
               key={to}
               to={to}
-              end={to === '/'}
+              end={to === "/"}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                   isActive
-                    ? 'bg-accent/15 text-accent font-medium'
-                    : 'text-text-muted hover:bg-surface-hover hover:text-text'
+                    ? "bg-accent/15 text-accent font-medium"
+                    : "text-text-muted hover:bg-surface-hover hover:text-text"
                 }`
               }
             >
@@ -52,8 +52,8 @@ export default function Layout() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                 isActive
-                  ? 'bg-accent/15 text-accent font-medium'
-                  : 'text-text-muted hover:bg-surface-hover hover:text-text'
+                  ? "bg-accent/15 text-accent font-medium"
+                  : "text-text-muted hover:bg-surface-hover hover:text-text"
               }`
             }
           >
@@ -64,7 +64,7 @@ export default function Layout() {
       </nav>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
         <Outlet />
       </main>
 
@@ -74,10 +74,10 @@ export default function Layout() {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === "/"}
             className={({ isActive }) =>
               `flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] transition-colors ${
-                isActive ? 'text-accent' : 'text-text-muted'
+                isActive ? "text-accent" : "text-text-muted"
               }`
             }
           >
