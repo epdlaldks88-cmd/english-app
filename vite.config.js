@@ -163,6 +163,156 @@ export default defineConfig(({ mode }) => {
           });
         },
       },
+      {
+        name: "api-fetch-article",
+        configureServer(server) {
+          server.middlewares.use("/api/fetch-article", async (req, res) => {
+            const url = new URL(req.url, "http://localhost");
+            const articleUrl = url.searchParams.get("url");
+
+            if (!articleUrl) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: "url 필요" }));
+              return;
+            }
+
+            try {
+              const fetchRes = await fetch(articleUrl, {
+                headers: {
+                  "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+                  "Accept-Language": "en-US,en;q=0.9",
+                },
+              });
+
+              const html = await fetchRes.text();
+
+              const ogTitleMatch = html.match(
+                /property="og:title"\s+content="([^"]+)"/i,
+              );
+              const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/i);
+              const rawTitle =
+                ogTitleMatch?.[1] || titleMatch?.[1] || "제목 없음";
+
+              const cleaned = html
+                .replace(/<script[\s\S]*?<\/script>/gi, "")
+                .replace(/<style[\s\S]*?<\/style>/gi, "")
+                .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
+                .replace(/<!--[\s\S]*?-->/g, "");
+
+              const targetHtml = cleaned;
+
+              // CNN 등 data-component-name="paragraph" 전용 추출
+              const cnnParagraphs = [];
+              const cnnRegex =
+                /<p[^>]*data-component-name="paragraph"[^>]*>([\s\S]*?)<\/p>/gi;
+              let cnnMatch;
+              while ((cnnMatch = cnnRegex.exec(targetHtml)) !== null) {
+                const text = cnnMatch[1]
+                  .replace(/<[^>]+>/g, "")
+                  .replace(/&amp;/g, "&")
+                  .replace(/&lt;/g, "<")
+                  .replace(/&gt;/g, ">")
+                  .replace(/&quot;/g, '"')
+                  .replace(/&#39;/g, "'")
+                  .replace(/&nbsp;/g, " ")
+                  .replace(/\s+/g, " ")
+                  .trim();
+                if (text.length >= 20) cnnParagraphs.push(text);
+              }
+
+              if (cnnParagraphs.length > 0) {
+                res.setHeader("Content-Type", "application/json");
+                res.end(
+                  JSON.stringify({
+                    title: rawTitle
+                      .replace(/&amp;/g, "&")
+                      .replace(/&quot;/g, '"')
+                      .replace(/&#39;/g, "'")
+                      .replace(/\s*[-|]\s*(BBC|CNN|Reuters).*$/i, "")
+                      .trim(),
+                    content: cnnParagraphs.join("\n\n"),
+                  }),
+                );
+                return;
+              }
+
+              const paragraphs = [];
+              const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
+              let match;
+
+              while ((match = pRegex.exec(targetHtml)) !== null) {
+                if (
+                  /class="[^"]*(?:caption|credit|image-|photo-|fig|gallery|media)/i.test(
+                    match[0],
+                  )
+                )
+                  continue;
+
+                const text = match[1]
+                  .replace(/<[^>]+>/g, "")
+                  .replace(/&amp;/g, "&")
+                  .replace(/&lt;/g, "<")
+                  .replace(/&gt;/g, ">")
+                  .replace(/&quot;/g, '"')
+                  .replace(/&#39;/g, "'")
+                  .replace(/&nbsp;/g, " ")
+                  .replace(/\s+/g, " ")
+                  .trim();
+
+                if (text.length < 40 || text.split(" ").length < 8) continue;
+                if (!/[a-zA-Z]/.test(text)) continue;
+                if (
+                  /^(Share|Follow|Subscribe|Sign up|Log in|Read more|Related|Copyright|©)/i.test(
+                    text,
+                  )
+                )
+                  continue;
+                if (
+                  /^(Published|Updated|Written by|Edited by|By\s)/i.test(text)
+                )
+                  continue;
+                if (
+                  /(click here|sign up|newsletter|subscribe|download the app)/i.test(
+                    text,
+                  )
+                )
+                  continue;
+                if (
+                  /(getty|reuters|ap photo|afp|associated press|shutterstock)/i.test(
+                    text,
+                  ) &&
+                  text.length < 150
+                )
+                  continue;
+                if (/^(Related:|See also:|More:|Read:|RELATED)/i.test(text))
+                  continue;
+                if (/(sponsored|advertisement|promoted)/i.test(text)) continue;
+
+                paragraphs.push(text);
+              }
+
+              if (paragraphs.length === 0)
+                throw new Error("기사 본문을 추출할 수 없습니다.");
+
+              const title = rawTitle
+                .replace(/&amp;/g, "&")
+                .replace(/&quot;/g, '"')
+                .replace(/&#39;/g, "'")
+                .replace(/\s*[-|]\s*(BBC|CNN|Reuters).*$/i, "")
+                .trim();
+
+              res.setHeader("Content-Type", "application/json");
+              res.end(
+                JSON.stringify({ title, content: paragraphs.join("\n\n") }),
+              );
+            } catch (err) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: err.message }));
+            }
+          });
+        },
+      },
     ],
   };
 });

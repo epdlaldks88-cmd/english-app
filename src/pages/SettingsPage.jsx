@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Upload, Download, Loader2, Trash2 } from "lucide-react";
 import { syncToCloud, syncFromCloud } from "../db/sync";
 import { db } from "../db/database";
+import { supabase } from "../db/supabase";
 
 export default function SettingsPage() {
   const [syncing, setSyncing] = useState(false);
@@ -38,6 +39,34 @@ export default function SettingsPage() {
     if (!confirm("로컬 데이터를 모두 삭제합니다. 진행할까요?")) return;
     await db.delete();
     location.reload();
+  };
+
+  const handleResetAll = async () => {
+    if (
+      !confirm(
+        "로컬 + 클라우드 데이터를 모두 삭제합니다. 복구할 수 없습니다. 진행할까요?",
+      )
+    )
+      return;
+    if (!confirm("정말로 전체 초기화할까요?")) return;
+
+    try {
+      // Supabase 전체 삭제
+      if (supabase) {
+        await supabase.from("words").delete().neq("id", "");
+        await supabase.from("translations").delete().neq("id", "");
+        await supabase.from("article_translations").delete().neq("id", "");
+        await supabase.from("subtitles").delete().neq("id", "");
+        await supabase.from("articles").delete().neq("id", "");
+        await supabase.from("videos").delete().neq("id", "");
+      }
+
+      // 로컬 삭제
+      await db.delete();
+      location.reload();
+    } catch (err) {
+      alert("초기화 실패: " + err.message);
+    }
   };
 
   return (
@@ -77,6 +106,15 @@ export default function SettingsPage() {
             )}
             클라우드 → 로컬 다운로드
           </button>
+          <button
+            onClick={handleResetAll}
+            className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-danger text-white text-sm rounded-lg hover:bg-danger/80 transition-colors mt-2"
+          >
+            <Trash2 size={14} /> 전체 초기화 (로컬 + 클라우드)
+          </button>
+          <p className="text-[10px] text-danger/60 mt-2">
+            모든 영상, 기사, 단어, 자막 데이터가 영구 삭제됩니다.
+          </p>
         </div>
 
         {message && (
