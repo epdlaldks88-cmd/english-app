@@ -12,13 +12,19 @@ export function mergeSubtitles(subtitles) {
     current.texts.push(sub.text);
     current.endTime = sub.endTime;
 
-    // 문장 끝 감지: . ? ! 로 끝나는 경우
-    const combined = current.texts.join(" ");
-    if (/[.?!]$/.test(combined.trim())) {
+    const combined = current.texts.join(" ").trim();
+
+    // 문장 끝 감지: .?! 로 끝나거나, 시간이 충분히 쌓였거나, 길이가 길면 분리
+    const endsWithPunctuation = /[.?!]$/.test(combined);
+    const duration = current.endTime - current.startTime;
+    const isTooLong = combined.length > 150;
+    const isReasonableChunk = combined.length > 60 && duration > 3;
+
+    if (endsWithPunctuation || isTooLong || isReasonableChunk) {
       merged.push({
         id: `merged_${merged.length}`,
         videoId: sub.videoId,
-        text: combined.trim(),
+        text: combined,
         startTime: current.startTime,
         endTime: current.endTime,
       });
