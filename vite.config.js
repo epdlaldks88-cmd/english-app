@@ -313,6 +313,118 @@ export default defineConfig(({ mode }) => {
           });
         },
       },
+      {
+        name: "api-news",
+        configureServer(server) {
+          server.middlewares.use("/api/news", async (req, res) => {
+            const url = new URL(req.url, "http://localhost");
+            const topic = url.searchParams.get("topic") || "world";
+
+            const topics = {
+              world: "WORLD",
+              business: "BUSINESS",
+              technology: "TECHNOLOGY",
+              science: "SCIENCE",
+              health: "HEALTH",
+              sports: "SPORTS",
+              entertainment: "ENTERTAINMENT",
+            };
+
+            try {
+              const googleTopic = topics[topic] || "WORLD";
+              const rssUrl = `https://news.google.com/rss/headlines/section/topic/${googleTopic}?hl=en-US&gl=US&ceid=US:en`;
+
+              const fetchRes = await fetch(rssUrl, {
+                headers: {
+                  "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+                },
+              });
+
+              const xml = await fetchRes.text();
+
+              const items = [];
+              const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+              let match;
+
+              while (
+                (match = itemRegex.exec(xml)) !== null &&
+                items.length < 15
+              ) {
+                const itemXml = match[1];
+
+                const titleMatch =
+                  itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) ||
+                  itemXml.match(/<title>(.*?)<\/title>/);
+                const linkMatch = itemXml.match(/<link>(.*?)<\/link>/);
+                const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/);
+                const sourceMatch = itemXml.match(
+                  /<source[^>]*>(.*?)<\/source>/,
+                );
+                const descMatch =
+                  itemXml.match(
+                    /<description><!\[CDATA\[(.*?)\]\]><\/description>/,
+                  ) || itemXml.match(/<description>(.*?)<\/description>/);
+
+                if (!titleMatch || !linkMatch) continue;
+
+                let title = titleMatch[1].trim();
+                const link = linkMatch[1].trim();
+                const pubDate = pubDateMatch?.[1] || "";
+                const source = sourceMatch?.[1]?.trim() || "";
+
+                if (source && title.endsWith(` - ${source}`)) {
+                  title = title.slice(0, -source.length - 3).trim();
+                }
+
+                let thumbnail = "";
+                if (descMatch) {
+                  const imgMatch = descMatch[1].match(/src="([^"]+)"/);
+                  if (imgMatch) thumbnail = imgMatch[1];
+                }
+
+                items.push({ title, url: link, thumbnail, pubDate, source });
+              }
+
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ articles: items }));
+            } catch (err) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: err.message }));
+            }
+          });
+        },
+      },
+      {
+        name: "api-resolve-url",
+        configureServer(server) {
+          server.middlewares.use("/api/resolve-url", async (req, res) => {
+            const url = new URL(req.url, "http://localhost");
+            const targetUrl = url.searchParams.get("url");
+
+            if (!targetUrl) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: "url 필요" }));
+              return;
+            }
+
+            try {
+              const fetchRes = await fetch(targetUrl, {
+                redirect: "follow",
+                headers: {
+                  "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+                },
+              });
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ resolvedUrl: fetchRes.url }));
+            } catch {
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ resolvedUrl: targetUrl }));
+            }
+          });
+        },
+      },
     ],
   };
 });
