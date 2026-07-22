@@ -55,6 +55,7 @@ export default defineConfig(({ mode }) => {
             }
 
             try {
+              // 로컬에서는 기존 패키지 사용 (더 안정적)
               const { YoutubeTranscript } = await import("youtube-transcript");
               let transcript;
               try {
