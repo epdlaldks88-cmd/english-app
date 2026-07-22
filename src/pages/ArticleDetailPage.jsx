@@ -15,9 +15,70 @@ import ClickableText from "../components/ClickableText";
 import DictionaryPopup from "../components/DictionaryPopup";
 
 function splitSentences(text) {
-  // 문장 분리: .?! 기준, 약어(Mr. Dr. U.S. etc.) 대응
-  const raw = text.replace(/([.?!])\s+(?=[A-Z"])/g, "$1|||").split("|||");
-  return raw.map((s) => s.trim()).filter((s) => s.length > 0);
+  // 약어 보호: Mr. Mrs. Dr. U.S. St. vs. etc. 등
+  const protected_ = text
+    .replace(/Mr\./g, "Mr\u200B")
+    .replace(/Mrs\./g, "Mrs\u200B")
+    .replace(/Ms\./g, "Ms\u200B")
+    .replace(/Dr\./g, "Dr\u200B")
+    .replace(/Prof\./g, "Prof\u200B")
+    .replace(/Sr\./g, "Sr\u200B")
+    .replace(/Jr\./g, "Jr\u200B")
+    .replace(/St\./g, "St\u200B")
+    .replace(/Gen\./g, "Gen\u200B")
+    .replace(/Gov\./g, "Gov\u200B")
+    .replace(/Sen\./g, "Sen\u200B")
+    .replace(/Rep\./g, "Rep\u200B")
+    .replace(/Sgt\./g, "Sgt\u200B")
+    .replace(/Lt\./g, "Lt\u200B")
+    .replace(/Col\./g, "Col\u200B")
+    .replace(/Capt\./g, "Capt\u200B")
+    .replace(/U\.S\./g, "U\u200BS\u200B")
+    .replace(/U\.K\./g, "U\u200BK\u200B")
+    .replace(/U\.N\./g, "U\u200BN\u200B")
+    .replace(/E\.U\./g, "E\u200BU\u200B")
+    .replace(/vs\./g, "vs\u200B")
+    .replace(/etc\./g, "etc\u200B")
+    .replace(/i\.e\./g, "i\u200Be\u200B")
+    .replace(/e\.g\./g, "e\u200Bg\u200B")
+    .replace(/No\./g, "No\u200B")
+    .replace(/Inc\./g, "Inc\u200B")
+    .replace(/Corp\./g, "Corp\u200B")
+    .replace(/Ltd\./g, "Ltd\u200B")
+    .replace(/Co\./g, "Co\u200B")
+    .replace(/Jan\./g, "Jan\u200B")
+    .replace(/Feb\./g, "Feb\u200B")
+    .replace(/Mar\./g, "Mar\u200B")
+    .replace(/Apr\./g, "Apr\u200B")
+    .replace(/Aug\./g, "Aug\u200B")
+    .replace(/Sep\./g, "Sep\u200B")
+    .replace(/Sept\./g, "Sept\u200B")
+    .replace(/Oct\./g, "Oct\u200B")
+    .replace(/Nov\./g, "Nov\u200B")
+    .replace(/Dec\./g, "Dec\u200B");
+
+  // 문장 분리: .?! 뒤에 공백+대문자 또는 따옴표
+  const raw = protected_.split(/([.?!])\s+(?=[A-Z"\u201C])/);
+
+  // 분리된 조각 재조합
+  const sentences = [];
+  let current = "";
+  for (let i = 0; i < raw.length; i++) {
+    current += raw[i];
+    // 구두점 조각이면 다음으로
+    if (/^[.?!]$/.test(raw[i])) continue;
+    // 의미 있는 문장이면 저장
+    const restored = current.replace(/\u200B/g, ".").trim();
+    if (restored.length > 0) {
+      sentences.push(restored);
+    }
+    current = "";
+  }
+  if (current.trim()) {
+    sentences.push(current.replace(/\u200B/g, ".").trim());
+  }
+
+  return sentences;
 }
 
 export default function ArticleDetailPage() {

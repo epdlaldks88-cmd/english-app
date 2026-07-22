@@ -68,6 +68,17 @@ export default function ArticlesPage() {
   const handleImportNews = async (news, index) => {
     setImporting(index);
 
+    // 중복 체크
+    const existing = await db.articles.toArray();
+    const isDuplicate = existing.some(
+      (a) => a.sourceUrl === news.url || a.title === news.title,
+    );
+    if (isDuplicate) {
+      alert("이미 추가된 기사입니다.");
+      setImporting(null);
+      return;
+    }
+
     try {
       const res = await fetch(
         `/api/fetch-article?url=${encodeURIComponent(news.url)}`,
