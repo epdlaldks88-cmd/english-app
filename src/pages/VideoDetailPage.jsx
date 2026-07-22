@@ -154,21 +154,22 @@ export default function VideoDetailPage() {
   };
 
   const handleResetAll = async () => {
-    if (!confirm("자막을 포함한 모든 데이터를 초기화합니다. 진행할까요?"))
+    if (!confirm("자막·번역·단어를 모두 삭제하고 다시 가져옵니다. 진행할까요?"))
       return;
 
-    // 전부 삭제
+    // 로컬 전부 삭제
     await db.subtitles.where("videoId").equals(videoId).delete();
     await db.translations.where("videoId").equals(videoId).delete();
     await db.words.where("videoId").equals(videoId).delete();
     await db.videos.update(videoId, { wordsExtracted: false });
 
-    // Supabase도 삭제
+    // Supabase 삭제
     if (supabase) {
       await supabase.from("subtitles").delete().eq("video_id", videoId);
     }
 
-    window.location.reload();
+    // 자막 다시 가져오기
+    await fetchSubtitles();
   };
 
   const handleSubtitleClick = (startTime) => {
