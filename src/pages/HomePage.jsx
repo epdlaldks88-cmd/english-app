@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Video, BookOpen, PenTool, BarChart3 } from "lucide-react";
+import { Video, FileText, BookOpen, PenTool, BarChart3 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/database";
 
@@ -10,6 +10,13 @@ const quickActions = [
     title: "영상 등록",
     desc: "YouTube 뉴스 영상 추가",
     color: "text-accent",
+  },
+  {
+    to: "/articles",
+    icon: FileText,
+    title: "기사 학습",
+    desc: "영어 뉴스 기사 읽기 · 번역",
+    color: "text-warning",
   },
   {
     to: "/vocabulary",

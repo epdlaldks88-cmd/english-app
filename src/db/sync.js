@@ -55,6 +55,35 @@ export async function syncToCloud() {
       }
     }
 
+    // 기사 업로드
+    const articles = await db.articles.toArray();
+    if (articles.length > 0) {
+      const rows = articles.map((a) => ({
+        id: a.id,
+        title: a.title,
+        source_url: a.sourceUrl || "",
+        content: a.content,
+        added_at: a.addedAt,
+        words_extracted: a.wordsExtracted || false,
+      }));
+      await supabase.from("articles").upsert(rows);
+    }
+
+    // 기사 번역 업로드
+    const articleTrans = await db.articleTranslations.toArray();
+    if (articleTrans.length > 0) {
+      for (let i = 0; i < articleTrans.length; i += 500) {
+        const batch = articleTrans.slice(i, i + 500).map((t) => ({
+          id: t.id,
+          article_id: t.articleId,
+          sentence_index: t.sentenceIndex,
+          english: t.english || "",
+          korean: t.korean || "",
+        }));
+        await supabase.from("article_translations").upsert(batch);
+      }
+    }
+
     console.log("클라우드 싱크 완료");
   } catch (err) {
     console.error("클라우드 싱크 실패:", err);
@@ -125,6 +154,35 @@ export async function syncFromCloud() {
         level: w.level,
       }));
       await db.words.bulkPut(rows);
+    }
+
+    // 기사 다운로드
+    const { data: articles } = await supabase.from("articles").select("*");
+    if (articles?.length > 0) {
+      const rows = articles.map((a) => ({
+        id: a.id,
+        title: a.title,
+        sourceUrl: a.source_url,
+        content: a.content,
+        addedAt: a.added_at,
+        wordsExtracted: a.words_extracted,
+      }));
+      await db.articles.bulkPut(rows);
+    }
+
+    // 기사 번역 다운로드
+    const { data: articleTrans } = await supabase
+      .from("article_translations")
+      .select("*");
+    if (articleTrans?.length > 0) {
+      const rows = articleTrans.map((t) => ({
+        id: t.id,
+        articleId: t.article_id,
+        sentenceIndex: t.sentence_index,
+        english: t.english,
+        korean: t.korean,
+      }));
+      await db.articleTranslations.bulkPut(rows);
     }
 
     console.log("클라우드에서 동기화 완료");

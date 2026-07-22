@@ -24,3 +24,13 @@ db.version(3).stores({
   words: "id, word, videoId, isIdiom, addedAt, nextReview, level",
   studyLogs: "id, videoId, mode, startedAt",
 });
+
+db.version(4).stores({
+  videos: "id, title, addedAt, isFavorite, status, wordsExtracted",
+  subtitles: "id, videoId, startTime, endTime",
+  translations: "id, videoId",
+  words: "id, word, videoId, isIdiom, addedAt, nextReview, level",
+  studyLogs: "id, videoId, mode, startedAt",
+  articles: "id, title, addedAt, wordsExtracted",
+  articleTranslations: "id, articleId, sentenceIndex",
+});

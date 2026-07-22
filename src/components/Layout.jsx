@@ -2,6 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import {
   Home,
   Video,
+  FileText,
   BookOpen,
   PenTool,
   BarChart3,
@@ -11,6 +12,7 @@ import {
 const navItems = [
   { to: "/", icon: Home, label: "홈" },
   { to: "/videos", icon: Video, label: "영상" },
+  { to: "/articles", icon: FileText, label: "기사" },
   { to: "/vocabulary", icon: BookOpen, label: "단어장" },
   { to: "/study", icon: PenTool, label: "학습" },
   { to: "/stats", icon: BarChart3, label: "통계" },

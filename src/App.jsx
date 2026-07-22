@@ -13,6 +13,8 @@ import ShadowingPage from "./pages/ShadowingPage";
 import StatsPage from "./pages/StatsPage";
 import SettingsPage from "./pages/SettingsPage";
 import { syncFromCloud, syncToCloud } from "./db/sync";
+import ArticlesPage from "./pages/ArticlesPage";
+import ArticleDetailPage from "./pages/ArticleDetailPage";
 
 export default function App() {
   // 앱 시작 시 클라우드에서 동기화
@@ -48,6 +50,8 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/videos" element={<VideosPage />} />
           <Route path="/videos/:videoId" element={<VideoDetailPage />} />
+          <Route path="/articles" element={<ArticlesPage />} />
+          <Route path="/articles/:articleId" element={<ArticleDetailPage />} />
           <Route path="/vocabulary" element={<VocabularyPage />} />
           <Route path="/vocabulary/flashcard" element={<FlashcardPage />} />
           <Route path="/study" element={<StudyPage />} />
