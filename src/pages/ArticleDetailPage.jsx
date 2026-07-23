@@ -8,6 +8,7 @@ import {
   EyeOff,
   BookOpen,
   RefreshCw,
+  PenTool,
 } from "lucide-react";
 import { db } from "../db/database";
 import { autoExtractAndSave } from "../utils/extractWords";
@@ -234,6 +235,12 @@ export default function ArticleDetailPage() {
 
       {/* 관리 버튼 */}
       <div className="flex flex-wrap gap-2 mb-4 mt-2">
+        <Link
+          to={`/study/article-cloze/${articleId}`}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-warning/15 text-warning rounded-lg hover:bg-warning/25 transition-colors"
+        >
+          <PenTool size={12} /> 빈칸 채우기
+        </Link>
         <button
           onClick={handleReprocess}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded-lg text-text-muted hover:bg-surface-hover transition-colors"
