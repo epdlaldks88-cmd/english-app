@@ -65,19 +65,78 @@ export async function extractNewWords(mergedSubtitles, videoId) {
 }
 
 // Free Dictionary API 조회
-async function lookupWord(word) {
-  // 숙어는 사전 조회 스킵 (보통 없음)
-  if (word.includes(" ")) return null;
-  try {
-    const res = await fetch(
-      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data[0] || null;
-  } catch {
-    return null;
+// 단어 원형 변환 시도
+function getBaseForm(word) {
+  const forms = [word];
+
+  // 과거형/과거분사
+  if (word.endsWith("ed")) {
+    forms.push(word.slice(0, -2)); // differed → differ
+    forms.push(word.slice(0, -1)); // emulated → emulat (X) but tried
+    if (word.endsWith("ied")) {
+      forms.push(word.slice(0, -3) + "y"); // carried → carry
+    }
+    if (word.endsWith("ted") && word.length > 4) {
+      forms.push(word.slice(0, -3) + "te"); // emulated → emulate
+    }
+    if (word.endsWith("ded") && word.length > 4) {
+      forms.push(word.slice(0, -3) + "de"); // included → include
+    }
+    // 자음 겹침: stopped → stop
+    const base = word.slice(0, -2);
+    if (base.length >= 3 && base[base.length - 1] === base[base.length - 2]) {
+      forms.push(base.slice(0, -1));
+    }
   }
+
+  // 진행형
+  if (word.endsWith("ing")) {
+    forms.push(word.slice(0, -3)); // running → runn → run
+    forms.push(word.slice(0, -3) + "e"); // making → make
+    const base = word.slice(0, -3);
+    if (base.length >= 3 && base[base.length - 1] === base[base.length - 2]) {
+      forms.push(base.slice(0, -1)); // running → run
+    }
+  }
+
+  // 복수형
+  if (word.endsWith("ies")) {
+    forms.push(word.slice(0, -3) + "y"); // countries → country
+  } else if (word.endsWith("es")) {
+    forms.push(word.slice(0, -2)); // watches → watch
+    forms.push(word.slice(0, -1)); // gates → gate (X but tried)
+  } else if (word.endsWith("s") && !word.endsWith("ss")) {
+    forms.push(word.slice(0, -1)); // details → detail
+  }
+
+  // 부사 → 형용사
+  if (word.endsWith("ly")) {
+    forms.push(word.slice(0, -2)); // quickly → quick
+  }
+
+  return [...new Set(forms)];
+}
+
+async function lookupWord(word) {
+  if (word.includes(" ")) return null;
+
+  const forms = getBaseForm(word);
+
+  for (const form of forms) {
+    if (form.length < 2) continue;
+    try {
+      const res = await fetch(
+        `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(form)}`,
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data?.[0]) return { ...data[0], originalWord: word };
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
 }
 
 // 배치 번역
@@ -145,6 +204,26 @@ export async function autoExtractAndSave(mergedSubtitles, videoId, onProgress) {
     const koreanDefs = await translateBatch(defsToTranslate);
 
     // 결과 조합 + 저장
+    // 사전에서 못 찾은 단어 수집 → DeepL로 직접 번역
+    const noDefWords = [];
+    const noDefIndices = [];
+
+    for (let bi = 0; bi < batch.length; bi++) {
+      const dictData = lookups[bi];
+      const isIdiom = idioms.includes(batch[bi]);
+      if (!dictData && !isIdiom) {
+        noDefWords.push(batch[bi]);
+        noDefIndices.push(bi);
+      }
+    }
+
+    // 사전 미등록 단어 DeepL 번역
+    let directTranslations = [];
+    if (noDefWords.length > 0) {
+      directTranslations = await translateBatch(noDefWords);
+    }
+
+    // 결과 조합 + 저장
     for (let bi = 0; bi < batch.length; bi++) {
       const word = batch[bi];
       const isIdiom = idioms.includes(word);
@@ -153,7 +232,7 @@ export async function autoExtractAndSave(mergedSubtitles, videoId, onProgress) {
       let meanings = [];
       let koreanWord = "";
 
-      // 숙어 한글 번역 가져오기
+      // 숙어 한글 번역
       if (isIdiom) {
         const idiomMapIdx = defMapping.findIndex(
           (e) => e.bi === bi && e.type === "idiom",
@@ -180,13 +259,24 @@ export async function autoExtractAndSave(mergedSubtitles, videoId, onProgress) {
           }),
         }));
       } else if (isIdiom && koreanWord) {
-        // 사전에 없는 숙어: 한글 번역만 표시
         meanings = [
           {
             partOfSpeech: "idiom",
             definitions: [{ english: word, korean: koreanWord, example: "" }],
           },
         ];
+      } else {
+        // 사전에 없는 단어: DeepL 직접 번역 결과 사용
+        const directIdx = noDefIndices.indexOf(bi);
+        const korean = directIdx >= 0 ? directTranslations[directIdx] : "";
+        if (korean) {
+          meanings = [
+            {
+              partOfSpeech: "word",
+              definitions: [{ english: word, korean, example: "" }],
+            },
+          ];
+        }
       }
 
       const record = {

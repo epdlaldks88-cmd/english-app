@@ -15,7 +15,7 @@ import ClickableText from "../components/ClickableText";
 import DictionaryPopup from "../components/DictionaryPopup";
 
 function splitSentences(text) {
-  // 약어 보호: Mr. Mrs. Dr. U.S. St. vs. etc. 등
+  // 약어 보호
   const protected_ = text
     .replace(/Mr\./g, "Mr\u200B")
     .replace(/Mrs\./g, "Mrs\u200B")
@@ -57,28 +57,14 @@ function splitSentences(text) {
     .replace(/Nov\./g, "Nov\u200B")
     .replace(/Dec\./g, "Dec\u200B");
 
-  // 문장 분리: .?! 뒤에 공백+대문자 또는 따옴표
-  const raw = protected_.split(/([.?!])\s+(?=[A-Z"\u201C])/);
+  // 구두점+공백+대문자/따옴표 경계에 구분자 삽입 (구두점은 앞 문장에 유지)
+  const marked = protected_.replace(/([.?!])\s+(?=[A-Z"\u201C])/g, "$1|||");
 
-  // 분리된 조각 재조합
-  const sentences = [];
-  let current = "";
-  for (let i = 0; i < raw.length; i++) {
-    current += raw[i];
-    // 구두점 조각이면 다음으로
-    if (/^[.?!]$/.test(raw[i])) continue;
-    // 의미 있는 문장이면 저장
-    const restored = current.replace(/\u200B/g, ".").trim();
-    if (restored.length > 0) {
-      sentences.push(restored);
-    }
-    current = "";
-  }
-  if (current.trim()) {
-    sentences.push(current.replace(/\u200B/g, ".").trim());
-  }
+  const raw = marked.split("|||");
 
-  return sentences;
+  return raw
+    .map((s) => s.replace(/\u200B/g, ".").trim())
+    .filter((s) => s.length > 0);
 }
 
 export default function ArticleDetailPage() {
