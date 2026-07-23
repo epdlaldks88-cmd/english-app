@@ -15,7 +15,7 @@ const navItems = [
   { to: "/articles", icon: FileText, label: "기사" },
   { to: "/vocabulary", icon: BookOpen, label: "단어장" },
   { to: "/study", icon: PenTool, label: "학습" },
-  { to: "/stats", icon: BarChart3, label: "통계" },
+  { to: "/settings", icon: Settings, label: "설정" },
 ];
 
 export default function Layout() {
